@@ -1,0 +1,21 @@
+{
+  "singleQuote": true,
+  "bracketSpacing": true,
+  "tabWidth": 2,
+  "trailingComma": "es5",
+  "semi": true,
+  "endOfLine": "auto",
+  "importOrder": [
+    "^@/(.*)$",
+    "^(express?/?([a-zA-Z/]*))$",
+    "<THIRD_PARTY_MODULES>",
+    "^@/models/(.*)$",
+    "^@/utils/(.*)$",
+    "^@/middleware/(.*)$",
+    "^@/routes/(.*)$",
+    "^[./]"
+  ],
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true,
+  "plugins": ["@trivago/prettier-plugin-sort-imports"]
+}

@@ -1,0 +1,12 @@
+/.vscode
+/node_modules
+./dist
+
+./src/index.ts
+
+*.yml
+*.yaml
+
+*.env
+.env
+.env.*
