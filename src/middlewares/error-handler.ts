@@ -2,7 +2,6 @@ import { type NextFunction, type Request, type Response } from 'express';
 
 import { ZodError } from 'zod';
 
-import { env } from '../env';
 import { ApiError } from '../utils/api-error';
 
 /**
@@ -16,10 +15,6 @@ export const errorHandler = (
   _next: NextFunction
 ) => {
   let error = err;
-
-  if (env.NODE_ENV === 'development') {
-    console.log({ error });
-  }
 
   // check whether it is instance of ApiError
   if (!(error instanceof ApiError)) {

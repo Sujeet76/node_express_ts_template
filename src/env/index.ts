@@ -5,6 +5,8 @@ const EnvSchema = z.object({
     .enum(['development', 'production', 'test'])
     .default('development'),
   PORT: z.coerce.number(),
+  LOG_LEVEL: z.string().default('info'),
+  API_PREFIX: z.string(),
 });
 
 export type EnvSchema = z.infer<typeof EnvSchema>;
