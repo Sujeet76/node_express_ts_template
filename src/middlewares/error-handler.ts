@@ -1,51 +1,27 @@
-import { type NextFunction, type Request, type Response } from 'express';
-
-import { ZodError } from 'zod';
-
-import { ApiError } from '../utils/api-error';
+import { ErrorRequestHandler } from 'express';
+import { AppError, InternalServalError } from '../utils/app-error';
+import { env } from '../env/env';
 
 /**
  * @description This middleware is responsible to catch the errors from any request handler wrapped inside the {@link asyncHandler}
  */
-export const errorHandler = (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  err: any,
-  req: Request,
-  res: Response,
-  _next: NextFunction
-) => {
-  let error = err;
+const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
+  let error: AppError;
 
-  // check whether it is instance of ApiError
-  if (!(error instanceof ApiError)) {
-    // if not create a new instance of ApiError
-    // const statusCode =
-    //   error.statusCode || error instanceof mongoose.Error ? 400 : 500;
-    // const message = error.message || 'Something went wrong';
-    let statusCode = 500;
-    let message = 'something went wrong';
-    let errors;
-    let stack: string | undefined = '';
-
-    if (error instanceof ZodError) {
-      statusCode = 400;
-      errors = error.issues;
-      stack = error.stack;
-      message = error.errors.map((e) => e.message).join('\n');
-    }
-    error = new ApiError(
-      statusCode,
-      message,
-      errors || error.errors || [],
-      stack
-    );
+  if (err instanceof AppError) {
+    error = err;
+  } else if (err instanceof Error) {
+    error = new InternalServalError(err.message, err.stack);
+  } else {
+    error = new InternalServalError('Something went wrong', err);
   }
 
-  // send error response
-  const response = {
-    ...error,
-    message: error.message,
-    ...(process.env.NODE_ENV === 'development' ? { stack: error.stack } : {}),
-  };
-  return res.status(error.statusCode).json(response);
+  res.status(error.statusCode).json({
+    message: error.message || 'An error occurred',
+    status: error.statusCode || 500,
+    error: error.details || null,
+    stack: env.NODE_ENV === 'development' ? error.stack : undefined,
+  });
 };
+
+export { errorHandler };

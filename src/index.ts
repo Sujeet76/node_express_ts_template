@@ -5,8 +5,8 @@ dotenv.config({
 
 import { IncomingMessage, Server, ServerResponse } from 'http';
 import { app } from './app';
-import { env } from './env';
 import { logger } from './logger/logger';
+import { env } from './env/env';
 
 const signals = ['SIGINT', 'SIGTERM'] as const;
 
@@ -38,14 +38,11 @@ signals.forEach((signal) => {
   });
 });
 
-const startServer = async () => {
+const startServer = () => {
   server = app.listen(env.PORT, () => {
     logger.info(`Server is running at http://localhost:${env.PORT}`);
   });
   return server;
 };
 
-startServer().catch((error) => {
-  logger.fatal(error, "Error starting server");
-  process.exit(1);
-});
+startServer()

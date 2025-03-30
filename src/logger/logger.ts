@@ -1,41 +1,71 @@
+import pino from 'pino';
 import { Request, Response } from 'express';
 
-import pino from 'pino';
-
-import { env } from '../env';
-
-const transport =
-  env.NODE_ENV === 'development'
-    ? {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l',
-          ignore: 'pid,hostname',
-        },
-      }
-    : undefined;
-
+// Create a logger instance with appropriate configuration
 export const logger = pino({
-  level: env.LOG_LEVEL,
-  transport,
-  serializers: {
-    err: pino.stdSerializers.err,
-    req: pino.stdSerializers.req,
-    res: pino.stdSerializers.res,
-  },
+  level: process.env.LOG_LEVEL,
+  transport:
+    process.env.NODE_ENV !== 'production'
+      ? {
+          target: 'pino-pretty',
+          options: {
+            colorize: true,
+            translateTime: 'SYS:standard',
+          },
+        }
+      : undefined,
   formatters: {
-    level: (label) => ({ level: label }),
+    level: (label) => {
+      return { level: label };
+    },
   },
-  timestamp: () => `,"time":"${new Date().toISOString()}"`,
+  // base: undefined, // Removes pid and hostname from logs
+  timestamp: pino.stdTimeFunctions.isoTime,
+  redact: {
+    paths: [
+      'req.headers.authorization',
+      'req.headers.cookie',
+      'res.headers["set-cookie"]',
+    ],
+    censor: '***SENSITIVE DATA REDACTED***',
+  },
 });
 
-export const httpLogger = (req: Request, _res: Response) => {
-  if (env.NODE_ENV === 'production') {
-    return logger.child({
-      correlationId: req.headers['x-correlation-id'] || 'none',
+// For request logging with pino-http - will be configured in the middleware
+export const httpLogger = {
+  // Configuration for pino-http
+  logger,
+  redact: [
+    'req.headers.authorization',
+    'req.headers.cookie',
+    'res.headers["set-cookie"]',
+  ],
+  autoLogging: {
+    ignore: (req: Request) =>
+      req.url?.includes('/health') || req.url?.includes('/metrics'),
+  },
+  // Custom success message
+  customSuccessMessage: (req: Request, res: Response) => {
+    return `${req.method} ${req.url} completed with ${res.statusCode}`;
+  },
+  // Custom error message
+  customErrorMessage: (req: Request, res: Response, err: Error) => {
+    return `${req.method} ${req.url} failed with ${res.statusCode} - ${err.message}`;
+  },
+  customLogLevel: (req: Request, res: Response, err: Error | undefined) => {
+    if (res.statusCode >= 400 && res.statusCode < 500) {
+      return 'warn';
+    }
+    if (res.statusCode >= 500 || err) {
+      return 'error';
+    }
+    return 'info';
+  },
+  // Custom props for logging
+  customProps: (req: Request, _res: Response) => {
+    return {
+      requestId: req.id,
       userAgent: req.headers['user-agent'],
-    });
-  }
-  return logger;
+    };
+  },
 };
