@@ -14,12 +14,10 @@ export class AppError extends Error {
     this.code = code;
     this.details = details;
 
-    // Ensures proper stack trace for debugging
     Error.captureStackTrace(this, this.constructor);
   }
 }
 
-// Common HTTP errors
 export class BadRequestError extends AppError {
   constructor(message = 'Bad Request', details?: unknown) {
     super(message, 400, 'BAD_REQUEST', details);

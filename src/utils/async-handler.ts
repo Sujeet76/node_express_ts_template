@@ -1,20 +1,35 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { logger } from '../logger/logger';
 
-// Define controller handler function type
-export type ControllerFunction<T> = (
-  req: Request,
+type AsyncFunction<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  P = any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ResBody = any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ReqBody = any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ReqQuery = any,
+> = (
+  req: Request<P, ResBody, ReqBody, ReqQuery>,
   res: Response,
   next: NextFunction
-) => Promise<T>;
+) => Promise<unknown>;
 
 /**
  * Wraps an async controller function to handle errors automatically
  * This eliminates the need for try/catch blocks in every controller
  * @param fn The async controller function to wrap
  */
-export const asyncHandler = <T>(fn: ControllerFunction<T>) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
+export const asyncHandler = <
+  P = unknown,
+  ResBody = unknown,
+  ReqBody = unknown,
+  ReqQuery = unknown,
+>(
+  fn: AsyncFunction<P, ResBody, ReqBody, ReqQuery>
+): RequestHandler<P, ResBody, ReqBody, ReqQuery> => {
+  return async (req, res, next) => {
     try {
       await fn(req, res, next);
     } catch (error) {
@@ -31,7 +46,10 @@ export const asyncHandler = <T>(fn: ControllerFunction<T>) => {
         },
         'Error caught in asyncHandler'
       );
-      next(error);
+      // Only pass to error handler if response hasn't been sent yet
+      if (!res.headersSent) {
+        next(error);
+      }
     }
   };
 };

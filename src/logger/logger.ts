@@ -1,39 +1,49 @@
 import pino from 'pino';
 import { Request, Response } from 'express';
+import path from 'path';
+import fs from 'fs';
+import pinoPretty from 'pino-pretty';
 
-// Create a logger instance with appropriate configuration
-export const logger = pino({
-  level: process.env.LOG_LEVEL,
-  transport:
-    process.env.NODE_ENV !== 'production'
-      ? {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'SYS:standard',
-          },
-        }
-      : undefined,
-  formatters: {
-    level: (label) => {
-      return { level: label };
-    },
-  },
-  // base: undefined, // Removes pid and hostname from logs
-  timestamp: pino.stdTimeFunctions.isoTime,
-  redact: {
-    paths: [
-      'req.headers.authorization',
-      'req.headers.cookie',
-      'res.headers["set-cookie"]',
-    ],
-    censor: '***SENSITIVE DATA REDACTED***',
-  },
+const logsDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+
+const logFilePath = path.join(logsDir, 'app.log');
+
+const prettyStream = pinoPretty({
+  colorize: true,
+  translateTime: 'SYS:standard',
+  ignore: 'pid,hostname',
 });
 
-// For request logging with pino-http - will be configured in the middleware
+const streams = [
+  { stream: prettyStream },
+  { stream: fs.createWriteStream(logFilePath, { flags: 'a' }) },
+];
+
+export const logger = pino(
+  {
+    level: process.env.LOG_LEVEL || 'info',
+    formatters: {
+      level: (label) => {
+        return { level: label };
+      },
+    },
+    timestamp: pino.stdTimeFunctions.isoTime,
+    redact: {
+      paths: [
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'res.headers["set-cookie"]',
+      ],
+      censor: '***SENSITIVE DATA REDACTED***',
+    },
+  },
+  pino.multistream(streams)
+);
+
 export const httpLogger = {
-  // Configuration for pino-http
   logger,
   redact: [
     'req.headers.authorization',
@@ -61,7 +71,6 @@ export const httpLogger = {
     }
     return 'info';
   },
-  // Custom props for logging
   customProps: (req: Request, _res: Response) => {
     return {
       requestId: req.id,
