@@ -17,7 +17,7 @@ const helloController = new HelloController();
 app.route('/').get(helloController.hello);
 
 // 404 handler for undefined routes
-app.use('*', (req, res, next) => {
+app.use((req, res, next) => {
   next(new NotFoundError('Route not found'));
 });
 
